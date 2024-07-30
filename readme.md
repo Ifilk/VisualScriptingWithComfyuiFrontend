@@ -88,7 +88,7 @@ class ExampleCustomNode:
     FUNCTION = "run"
     CATEGORY = "example"
 
-    def run(self, text):
+    def run(self):
         ...
         return (...)
     
@@ -113,7 +113,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 ```
 ---
 - `RETURN_TYPES` 表示声明返回值类型列表，与TYPE对应。
-- `FUNCTION` 表示调用的函数名
+- `FUNCTION` 表示调用的函数名，该函数的参数名必须和`"required"`中声明的`name`相统一
 - `CATEGORY` 表示该节点所在的目录，显示在右键菜单里，可使用格式`.../.../...`表示多级目录
 - `NODE_CLASS_MAPPINGS` 节点声明字典。key为节点名字，value为类名
 - `NODE_DISPLAY_NAME_MAPPINGS` 节点展示名声明字典。key为节点名字，value为展示名
