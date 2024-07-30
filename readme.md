@@ -24,7 +24,7 @@
 `NODE_CLASS_MAPPINGS`, `NODE_DISPLAY_NAME_MAPPINGS` 和
 `WEB_DIRECTORY` (其中`WEB_DIRECTORY`可留空)。载入节点和自定义web文件。
 该项目已存放会用到的节点包作为自定义节点包的一部分，若需要创建新的自定义节点包
-请查看第3节
+请查看 [第3节 自定义节点](#3-自定义节点包)
 ### 2.2.2 /input
 用户通过UPLOAD相关操作上传文件的默认存储位置，在编写自定义节点需要导入文件使
 请使用`folder_paths.get_input_directory()`获取存储位置
@@ -38,7 +38,7 @@
 ### 2.2.5 main.py
 启动脚本`python main.py`
 
-# 3. 自定义节点包
+# 3. 自定义节点
 ## 3.1 自定义节点包目录结构
 这里推荐使用`ComfyUI-Custom-Scripts`的目录结构
 ```text
@@ -72,7 +72,7 @@ for file in files:
 WEB_DIRECTORY = "./web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 ```
-## 3.2 自定义节点
+## 3.2 自定义节点声明
 通常一个节点声明如下：
 ```python
 class ExampleCustomNode:
