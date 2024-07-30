@@ -1,38 +1,37 @@
-import os
-import sys
 import asyncio
-import traceback
-
-import nodes
-import folder_paths
-import execution
-import uuid
-import urllib
-import json
 import glob
-import struct
+import json
+import logging
+import mimetypes
+import os
 import ssl
-import hashlib
-from PIL import Image, ImageOps
-from PIL.PngImagePlugin import PngInfo
+import struct
+import sys
+import traceback
+import urllib
+import uuid
 from io import BytesIO
 
 import aiohttp
+from PIL import Image, ImageOps
+from PIL.PngImagePlugin import PngInfo
 from aiohttp import web
-import logging
 
-import mimetypes
-from comfy.cli_args import args
+import execution
+import folder_paths
 # import comfy.utils
 # import comfy.model_management
 import node_helpers
+import nodes
 from app.frontend_management import FrontendManager
 from app.user_manager import UserManager
+from comfy.cli_args import args
 
 
 class BinaryEventTypes:
     PREVIEW_IMAGE = 1
     UNENCODED_PREVIEW_IMAGE = 2
+
 
 async def send_socket_catch_exception(function, message):
     try:
@@ -40,12 +39,14 @@ async def send_socket_catch_exception(function, message):
     except (aiohttp.ClientError, aiohttp.ClientPayloadError, ConnectionResetError) as err:
         logging.warning("send error: {}".format(err))
 
+
 @web.middleware
 async def cache_control(request: web.Request, handler):
     response: web.Response = await handler(request)
     if request.path.endswith('.js') or request.path.endswith('.css'):
         response.headers.setdefault('Cache-Control', 'no-cache')
     return response
+
 
 def create_cors_middleware(allowed_origin: str):
     @web.middleware
@@ -64,7 +65,8 @@ def create_cors_middleware(allowed_origin: str):
 
     return cors_middleware
 
-class PromptServer():
+
+class PromptServer:
     def __init__(self, loop):
         PromptServer.instance = self
 
@@ -113,10 +115,10 @@ class PromptServer():
 
             try:
                 # Send initial state to the new client
-                await self.send("status", { "status": self.get_queue_info(), 'sid': sid }, sid)
+                await self.send("status", {"status": self.get_queue_info(), 'sid': sid}, sid)
                 # On reconnect if we are the currently executing client send the current node
                 if self.client_id == sid and self.last_node_id is not None:
-                    await self.send("executing", { "node": self.last_node_id }, sid)
+                    await self.send("executing", {"node": self.last_node_id}, sid)
 
                 async for msg in ws:
                     if msg.type == aiohttp.WSMsgType.ERROR:
@@ -163,7 +165,7 @@ class PromptServer():
 
         def compare_image_hash(filepath, image):
             hasher = node_helpers.hasher()
-            
+
             # function to compare hashes of two images to see if it already exists, fix to #3465
             if os.path.exists(filepath):
                 a = hasher()
@@ -206,7 +208,8 @@ class PromptServer():
                 else:
                     i = 1
                     while os.path.exists(filepath):
-                        if compare_image_hash(filepath, image): #compare hash to prevent saving of duplicates with same name, fix for #3465
+                        if compare_image_hash(filepath,
+                                              image):  #compare hash to prevent saving of duplicates with same name, fix for #3465
                             image_is_duplicate = True
                             break
                         filename = f"{split[0]} ({i}){split[1]}"
@@ -220,7 +223,56 @@ class PromptServer():
                         with open(filepath, "wb") as f:
                             f.write(image.file.read())
 
-                return web.json_response({"name" : filename, "subfolder": subfolder, "type": image_upload_type})
+                return web.json_response({"name": filename, "subfolder": subfolder, "type": image_upload_type})
+            else:
+                return web.Response(status=400)
+
+        def file_upload(post, save_function=None):
+            file_d = post.get("file")
+            overwrite = post.get("overwrite")
+            is_duplicate = False
+
+            upload_type = post.get("type")
+            upload_dir, upload_type = get_dir_by_type(upload_type)
+
+            if file_d and file_d.file:
+                filename = file_d.filename
+                if not filename:
+                    return web.Response(status=400)
+
+                subfolder = post.get("subfolder", "")
+                full_output_folder = os.path.join(upload_dir, os.path.normpath(subfolder))
+                filepath = os.path.abspath(os.path.join(full_output_folder, filename))
+
+                if os.path.commonpath((upload_dir, filepath)) != upload_dir:
+                    return web.Response(status=400)
+
+                if not os.path.exists(full_output_folder):
+                    os.makedirs(full_output_folder)
+
+                split = os.path.splitext(filename)
+
+                if overwrite is not None and (overwrite == "true" or overwrite == "1"):
+                    pass
+                else:
+                    i = 1
+                    while os.path.exists(filepath):
+                        if compare_image_hash(filepath,
+                                              file_d):  #compare hash to prevent saving of duplicates with same name, fix for #3465
+                            image_is_duplicate = True
+                            break
+                        filename = f"{split[0]} ({i}){split[1]}"
+                        filepath = os.path.join(full_output_folder, filename)
+                        i += 1
+
+                if not is_duplicate:
+                    if save_function is not None:
+                        save_function(file_d, post, filepath)
+                    else:
+                        with open(filepath, "wb") as f:
+                            f.write(file_d.file.read())
+
+                return web.json_response({"name": filename, "subfolder": subfolder, "type": upload_type})
             else:
                 return web.Response(status=400)
 
@@ -229,6 +281,10 @@ class PromptServer():
             post = await request.post()
             return image_upload(post)
 
+        @routes.post("/upload/file")
+        async def upload_file(request):
+            post = await request.post()
+            return file_upload(post)
 
         @routes.post("/upload/mask")
         async def upload_mask(request):
@@ -260,7 +316,7 @@ class PromptServer():
                 if os.path.isfile(file):
                     with Image.open(file) as original_pil:
                         metadata = PngInfo()
-                        if hasattr(original_pil,'text'):
+                        if hasattr(original_pil, 'text'):
                             for key in original_pil.text:
                                 metadata.add_text(key, original_pil.text[key])
                         original_pil = original_pil.convert('RGBA')
@@ -277,7 +333,7 @@ class PromptServer():
         async def view_image(request):
             if "filename" in request.rel_url.query:
                 filename = request.rel_url.query["filename"]
-                filename,output_dir = folder_paths.annotated_filepath(filename)
+                filename, output_dir = folder_paths.annotated_filepath(filename)
 
                 # validation for security: prevent accessing arbitrary path
                 if filename[0] == '/' or '..' in filename:
@@ -415,15 +471,23 @@ class PromptServer():
             return web.json_response(self.get_queue_info())
 
         def node_info(node_class):
+            """
+            获取节点信息
+            :param node_class:
+            :return:
+            """
             obj_class = nodes.NODE_CLASS_MAPPINGS[node_class]
             info = {}
             info['input'] = obj_class.INPUT_TYPES()
             info['output'] = obj_class.RETURN_TYPES
-            info['output_is_list'] = obj_class.OUTPUT_IS_LIST if hasattr(obj_class, 'OUTPUT_IS_LIST') else [False] * len(obj_class.RETURN_TYPES)
+            info['output_is_list'] = obj_class.OUTPUT_IS_LIST if hasattr(obj_class, 'OUTPUT_IS_LIST') else [
+                                                                                                               False] * len(
+                obj_class.RETURN_TYPES)
             info['output_name'] = obj_class.RETURN_NAMES if hasattr(obj_class, 'RETURN_NAMES') else info['output']
             info['name'] = node_class
-            info['display_name'] = nodes.NODE_DISPLAY_NAME_MAPPINGS[node_class] if node_class in nodes.NODE_DISPLAY_NAME_MAPPINGS.keys() else node_class
-            info['description'] = obj_class.DESCRIPTION if hasattr(obj_class,'DESCRIPTION') else ''
+            info['display_name'] = nodes.NODE_DISPLAY_NAME_MAPPINGS[
+                node_class] if node_class in nodes.NODE_DISPLAY_NAME_MAPPINGS.keys() else node_class
+            info['description'] = obj_class.DESCRIPTION if hasattr(obj_class, 'DESCRIPTION') else ''
             info['python_module'] = getattr(obj_class, "RELATIVE_PYTHON_MODULE", "nodes")
             info['category'] = 'sd'
             if hasattr(obj_class, 'OUTPUT_NODE') and obj_class.OUTPUT_NODE == True:
@@ -435,6 +499,7 @@ class PromptServer():
                 info['category'] = obj_class.CATEGORY
             return info
 
+        # 拉取所有节点信息
         @routes.get("/object_info")
         async def get_object_info(request):
             out = {}
@@ -446,6 +511,7 @@ class PromptServer():
                     logging.error(traceback.format_exc())
             return web.json_response(out)
 
+        # 拉取指定节点信息
         @routes.get("/object_info/{node_class}")
         async def get_object_info_node(request):
             node_class = request.match_info.get("node_class", None)
@@ -479,7 +545,7 @@ class PromptServer():
             logging.info("got prompt")
             resp_code = 200
             out_string = ""
-            json_data =  await request.json()
+            json_data = await request.json()
             json_data = self.trigger_on_prompt(json_data)
 
             if "number" in json_data:
@@ -515,7 +581,7 @@ class PromptServer():
 
         @routes.post("/queue")
         async def post_queue(request):
-            json_data =  await request.json()
+            json_data = await request.json()
             if "clear" in json_data:
                 if json_data["clear"]:
                     self.prompt_queue.wipe_queue()
@@ -529,8 +595,8 @@ class PromptServer():
 
         @routes.post("/interrupt")
         async def post_interrupt(request):
-            # nodes.interrupt_processing()
-            logging.info('-'*30, 'interrupt')
+            nodes.interrupt_processing()
+            logging.info('-' * 30, 'interrupt')
             return web.Response(status=200)
 
         @routes.post("/free")
@@ -546,7 +612,7 @@ class PromptServer():
 
         @routes.post("/history")
         async def post_history(request):
-            json_data =  await request.json()
+            json_data = await request.json()
             if "clear" in json_data:
                 if json_data["clear"]:
                     self.prompt_queue.wipe_history()
@@ -563,7 +629,7 @@ class PromptServer():
         # Prefix every route with /api for easier matching for delegation.
         # This is very useful for frontend dev server, which need to forward
         # everything except serving of static files.
-        # Currently both the old endpoints without prefix and new endpoints with
+        # Currently, both the old endpoints without prefix and new endpoints with
         # prefix are supported.
         api_routes = web.RouteTableDef()
         for route in self.routes:
@@ -584,6 +650,7 @@ class PromptServer():
         ])
 
     def get_queue_info(self):
+        # 获取队列信息
         prompt_info = {}
         exec_info = {}
         exec_info['queue_remaining'] = self.prompt_queue.get_tasks_remaining()
@@ -656,7 +723,7 @@ class PromptServer():
             self.messages.put_nowait, (event, data, sid))
 
     def queue_updated(self):
-        self.send_sync("status", { "status": self.get_queue_info() })
+        self.send_sync("status", {"status": self.get_queue_info()})
 
     async def publish_loop(self):
         while True:
@@ -669,10 +736,10 @@ class PromptServer():
         ssl_ctx = None
         scheme = "http"
         if args.tls_keyfile and args.tls_certfile:
-                ssl_ctx = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS_SERVER, verify_mode=ssl.CERT_NONE)
-                ssl_ctx.load_cert_chain(certfile=args.tls_certfile,
-                                keyfile=args.tls_keyfile)
-                scheme = "https"
+            ssl_ctx = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS_SERVER, verify_mode=ssl.CERT_NONE)
+            ssl_ctx.load_cert_chain(certfile=args.tls_certfile,
+                                    keyfile=args.tls_keyfile)
+            scheme = "https"
 
         site = web.TCPSite(runner, address, port, ssl_context=ssl_ctx)
         await site.start()

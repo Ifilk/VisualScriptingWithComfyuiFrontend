@@ -1,0 +1,2 @@
+class InterruptProcessingException(Exception):
+    pass

@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import hashlib
+import threading
 import traceback
 import math
 import time
@@ -12,6 +13,9 @@ import logging
 # from PIL.PngImagePlugin import PngInfo
 
 import numpy as np
+
+from comfy.model_management import InterruptProcessingException
+
 # import safetensors.torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
@@ -20,29 +24,115 @@ import importlib
 import folder_paths
 
 
-class CLIPTextEncode:
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+
+any = AnyType("*")
+
+interrupt_processing_mutex = threading.RLock()
+interrupt_processing_v = False
+
+global_variable = {}
+
+
+def before_node_execution():
+    # comfy.model_management.throw_exception_if_processing_interrupted()
+    global interrupt_processing_v
+    global interrupt_processing_mutex
+    with interrupt_processing_mutex:
+        if interrupt_processing_v:
+            interrupt_processing_v = False
+            raise InterruptProcessingException()
+
+
+def interrupt_processing(value=True):
+    # comfy.model_management.interrupt_current_processing(value)
+    global interrupt_processing_v
+    global interrupt_processing_mutex
+    with interrupt_processing_mutex:
+        interrupt_processing_v = value
+    pass
+
+
+class PutVariable:
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": {"text": ("STRING", {"multiline": True, "dynamicPrompts": True}), "clip": ("CLIP", )}}
-    RETURN_TYPES = ("CONDITIONING",)
-    FUNCTION = "encode"
+        return {"required":
+                    {'value': (any, []),
+                     "name": ("STRING", {"default": "var1"})},
+                }
 
-    CATEGORY = "conditioning"
+    RETURN_TYPES = ()
+    OUTPUT_NODE = True
+    FUNCTION = "provide"
+    CATEGORY = "base"
 
-    def encode(self, clip, text):
-        tokens = clip.tokenize(text)
-        output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
-        cond = output.pop("cond")
-        return ([[cond, output]], )
+    def provide(self, value, name):
+        global_variable[name] = value
+        return {}
 
+
+class GetVariable:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":
+                    {"name": ("STRING", {"default": "var1"})},
+                }
+
+    RETURN_TYPES = (any, )
+    FUNCTION = "provide"
+    CATEGORY = "base"
+
+    def provide(self, name):
+        if not name in global_variable.keys():
+            raise KeyError(name)
+        return {"result": (global_variable[name],)}
+
+
+class Number:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":
+                    {"text": ("STRING", {"dynamicPrompts": True})}}
+
+    RETURN_TYPES = ('INT', 'FLOAT')
+    OUTPUT_NODE = True
+    FUNCTION = "provide"
+    CATEGORY = "base"
+
+    def provide(self, text):
+        return {"ui": {"text": text}, "result": (int(text), float(text),)}
+
+
+class String:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":
+                    {"text": ("STRING", {"multiline": True, "dynamicPrompts": True})}}
+
+    RETURN_TYPES = ('STRING',)
+    OUTPUT_NODE = True
+    FUNCTION = "provide"
+    CATEGORY = "base"
+
+    def provide(self, text):
+        return {"ui": {"text": text}, "result": (text,)}
 
 
 NODE_CLASS_MAPPINGS = {
-    # "CLIPTextEncode": CLIPTextEncode
+    'PutVariable': PutVariable,
+    'GetVariable': GetVariable,
+    'Number': Number,
+    'String': String,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    # "CLIPTextEncode": "CLIP Text Encode (Prompt)"
+    'PutVariable': 'Put Variable',
+    'GetVariable': 'Get Variable',
+    'Number': 'Number',
+    'String': 'String',
 }
 
 EXTENSION_WEB_DIRS = {}
@@ -98,7 +188,8 @@ def load_custom_node(module_path: str, ignore=set(), module_parent="custom_nodes
                 if name not in ignore:
                     NODE_CLASS_MAPPINGS[name] = node_cls
                     node_cls.RELATIVE_PYTHON_MODULE = "{}.{}".format(module_parent, get_module_name(module_path))
-            if hasattr(module, "NODE_DISPLAY_NAME_MAPPINGS") and getattr(module, "NODE_DISPLAY_NAME_MAPPINGS") is not None:
+            if hasattr(module, "NODE_DISPLAY_NAME_MAPPINGS") and getattr(module,
+                                                                         "NODE_DISPLAY_NAME_MAPPINGS") is not None:
                 NODE_DISPLAY_NAME_MAPPINGS.update(module.NODE_DISPLAY_NAME_MAPPINGS)
             return True
         else:
@@ -108,6 +199,7 @@ def load_custom_node(module_path: str, ignore=set(), module_parent="custom_nodes
         logging.warning(traceback.format_exc())
         logging.warning(f"Cannot import {module_path} module for custom nodes: {e}")
         return False
+
 
 def init_external_custom_nodes():
     """
@@ -144,6 +236,7 @@ def init_external_custom_nodes():
                 import_message = " (IMPORT FAILED)"
             logging.info("{:6.1f} seconds{}: {}".format(n[0], import_message, n[1]))
         logging.info("")
+
 
 def init_builtin_extra_nodes():
     """
@@ -214,10 +307,12 @@ def init_extra_nodes(init_custom_nodes=True):
         logging.info("Skipping loading of custom nodes")
 
     if len(import_failed) > 0:
-        logging.warning("WARNING: some comfy_extras/ nodes did not import correctly. This may be because they are missing some dependencies.\n")
+        logging.warning(
+            "WARNING: some comfy_extras/ nodes did not import correctly. This may be because they are missing some dependencies.\n")
         for node in import_failed:
             logging.warning("IMPORT FAILED: {}".format(node))
-        logging.warning("\nThis issue might be caused by new missing dependencies added the last time you updated ComfyUI.")
+        logging.warning(
+            "\nThis issue might be caused by new missing dependencies added the last time you updated ComfyUI.")
         # if args.windows_standalone_build:
         #     logging.warning("Please run the update script: update/update_comfyui.bat")
         # else:

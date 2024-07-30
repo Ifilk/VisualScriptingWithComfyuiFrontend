@@ -100,6 +100,8 @@ import nodes
 #             logging.warning("\nWARNING: this card most likely does not support cuda-malloc, if you get \"CUDA error\" please run ComfyUI with: --disable-cuda-malloc\n")
 
 def prompt_worker(q, server):
+    # q - PromptQueue
+    # server - PromptServer
     e = execution.PromptExecutor(server)
     last_gc_collect = 0
     need_gc = False
@@ -148,9 +150,9 @@ def prompt_worker(q, server):
         if need_gc:
             current_time = time.perf_counter()
             if (current_time - last_gc_collect) > gc_collect_interval:
-                comfy.model_management.cleanup_models()
+                # comfy.model_management.cleanup_models()
                 gc.collect()
-                comfy.model_management.soft_empty_cache()
+                # comfy.model_management.soft_empty_cache()
                 last_gc_collect = current_time
                 need_gc = False
 
