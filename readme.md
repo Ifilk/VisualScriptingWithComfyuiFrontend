@@ -99,8 +99,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'ExampleCustomNode': 'Example Custom Node'
 }
 ```
-函数`INPUT_TYPES`用于声明该节点需要的参数。required表示显式声明该节点所需参数。
+- 函数`INPUT_TYPES`用于声明该节点需要的参数。required表示显式声明该节点所需参数。
 格式为`"name": ("TYPE", {})`
+- --
 - `name` 是节点展示该输入的名字
 - `TYPE` 用于简单的类型检查，只有TYPE相同的才能相连。"TYPE"除了是字符串，还可以是字符串列表，表示该输入类型为枚举
 - `{}` 表示设定属性值，一般情况下可为空。
@@ -110,6 +111,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 # 设置默认值与范围
 {"default": 0, "min": 0, "max": 0xffffffffffffffff}
 ```
+---
 - `RETURN_TYPES` 表示声明返回值类型列表，与TYPE对应。
 - `FUNCTION` 表示调用的函数名
 - `CATEGORY` 表示该节点所在的目录，显示在右键菜单里，可使用格式`.../.../...`表示多级目录
