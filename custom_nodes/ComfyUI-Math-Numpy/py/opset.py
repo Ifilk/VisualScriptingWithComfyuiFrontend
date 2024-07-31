@@ -28,6 +28,7 @@ class String2Matrix:
 class LoadMat:
     def __init__(self):
         self.input_dir = folder_paths.get_input_directory()
+
     @classmethod
     def INPUT_TYPES(s):
         input_dir = folder_paths.get_input_directory()
