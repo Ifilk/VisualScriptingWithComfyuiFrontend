@@ -11,7 +11,7 @@
 | /input          | 默认输入目录      | 默认的输入文件路径          |
 | /output         | 默认输出目录      | 默认的输出文件路径          |
 | /web            | 前端代码目录      | 前端代码               |
-| execution.py    | prompt执行器   | node执行逻辑           |
+| execution.py    | prompt执行器   | workflow执行逻辑       |
 | folder_paths.py | 路径管理器       | 管理默认路径             |
 | main.py         | 启动脚本        | 启动comfy            |
 | node_helpers.py | 节点工具代码      | 留存                 |
@@ -35,7 +35,9 @@
 前端页面代码文件，通过`WEB_DIRECTORY`声明web扩展包会被放置在此目录下，可通过`'/scripts/'`路径
 访问到前端接口。一般使用`/scripts/app.js`, `/scripts/api.js`。
 `/scripts/widgets.js`文件声明了所有的预制前端组件
-### 2.2.5 main.py
+### 2.2.5 execution.py
+workflow的执行代码，根据OUTPUT_NODE求解到执行路径，优先执行最短路径
+### 2.2.6 main.py
 启动脚本`python main.py`
 
 # 3.自定义节点
@@ -101,8 +103,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 }
 ```
 - 函数`INPUT_TYPES`用于声明该节点需要的参数。required表示显式声明该节点所需参数。
-格式为`"name": ("TYPE", {})`
-- --
+格式为`"name": ("TYPE", {})` 
+<br />
+#### requested:
 - `name` 是节点展示该输入的名字
 - `TYPE` 用于简单的类型检查，只有TYPE相同的才能相连。"TYPE"除了是字符串，还可以是字符串列表，表示该输入类型为枚举
 - `{}` 表示设定属性值，一般情况下可为空。
@@ -113,9 +116,51 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 {"default": 0, "min": 0, "max": 0xffffffffffffffff}
 ```
 ---
+#### hidden (optional):
+
+可通过如下定义来拿到节点的uid和工作流对象
+```text
+"hidden": {
+    "unique_id": "UNIQUE_ID",
+    "extra_pnginfo": "EXTRA_PNGINFO",
+}
+```
+extra_pnginfo.workflow 结构如下
+
+| 属性名          | 类型                                                                   | 描述       |
+|--------------|----------------------------------------------------------------------|----------|
+| last_node_id | int                                                                  | 最后的节点的id |
+| last_link_id | int                                                                  | 最后的链接的id |
+| nodes        | [Node]                                                               | 全部节点列表   |
+| groups       | [{'title': str, 'bounding': [int...], 'color': str, 'locked': bool}] | 节点组      |
+| config       | {}                                                                   | 设置       |
+| extra        | {'ds': {'offset': [float, float], 'scale':float}}                    | 摄像机信息    |
+| version      | float                                                                | 版本号      |
+
+Node 结构如下
+
+| 属性名           | 类型                                                                      | 描述   |
+|---------------|-------------------------------------------------------------------------|------|
+| id            | int                                                                     | 节点id |
+| type          | str                                                                     | 节点类名 |
+| pos           | [int, int]                                                              | 节点位置 |
+| size          | ['0':int, '1':int]                                                      | 节点大小 |
+| flags         | {}                                                                      |      |
+| order         | int                                                                     |      |
+| mode          | int                                                                     |      |
+| input         | [{'name':str, 'type':str, 'link':int}]                                  | 节点输入 |
+| output        | [{'name':str, 'type':str, 'link':[int], 'shape':int, 'slot_index':int}] | 节点输出 |
+| properties    | {}                                                                      | 节点属性 |
+
+--------
 - `RETURN_TYPES` 表示声明返回值类型列表，与TYPE对应。
 - `RETURN_NAMES` 表示声明返回值的展示名
 - `FUNCTION` 表示调用的函数名，该函数的参数名必须和`"required"`中声明的`name`相统一
 - `CATEGORY` 表示该节点所在的目录，显示在右键菜单里，可使用格式`.../.../...`表示多级目录
+- `INPUT_IS_LIST` 表示输入是一个列表，bool
+- `OUTPUT_IS_LIST` 表示输出是一个列表，bool
+- `OUTPUT_NODE` 表示该节点为输出节点，bool
+- 函数返回值允许两种格式：{'ui':{}, 'result': (...)} 和 (...)。前者格式可通过`'ui':{}`向前端传值
+---
 - `NODE_CLASS_MAPPINGS` 节点声明字典。key为节点名字，value为类名
 - `NODE_DISPLAY_NAME_MAPPINGS` 节点展示名声明字典。key为节点名字，value为展示名
