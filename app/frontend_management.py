@@ -177,9 +177,10 @@ class FrontendManager:
         Returns:
             str: The path of the initialized frontend.
         """
-        try:
-            return cls.init_frontend_unsafe(version_string)
-        except Exception as e:
-            logging.error("Failed to initialize frontend: %s", e)
-            logging.info("Falling back to the default frontend.")
-            return cls.DEFAULT_FRONTEND_PATH
+        # try:
+        #     return cls.init_frontend_unsafe(version_string)
+        # except Exception as e:
+        #     logging.error("Failed to initialize frontend: %s", e)
+        #     logging.info("Falling back to the default frontend.")
+        #     return cls.DEFAULT_FRONTEND_PATH
+        return cls.DEFAULT_FRONTEND_PATH
