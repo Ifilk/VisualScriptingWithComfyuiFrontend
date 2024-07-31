@@ -98,7 +98,6 @@ class Number:
                     {"text": ("STRING", {"dynamicPrompts": True})}}
 
     RETURN_TYPES = ('INT', 'FLOAT')
-    OUTPUT_NODE = True
     FUNCTION = "provide"
     CATEGORY = "base"
 
@@ -113,7 +112,6 @@ class String:
                     {"text": ("STRING", {"multiline": True, "dynamicPrompts": True})}}
 
     RETURN_TYPES = ('STRING',)
-    OUTPUT_NODE = True
     FUNCTION = "provide"
     CATEGORY = "base"
 
