@@ -105,6 +105,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 - 函数`INPUT_TYPES`用于声明该节点需要的参数。required表示显式声明该节点所需参数。
 格式为`"name": ("TYPE", {})` 
 <br />
+
 #### requested:
 - `name` 是节点展示该输入的名字
 - `TYPE` 用于简单的类型检查，只有TYPE相同的才能相连。"TYPE"除了是字符串，还可以是字符串列表，表示该输入类型为枚举
@@ -115,7 +116,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 # 设置默认值与范围
 {"default": 0, "min": 0, "max": 0xffffffffffffffff}
 ```
----
+<br />
+
 #### hidden (optional):
 
 可通过如下定义来拿到节点的uid和工作流对象
