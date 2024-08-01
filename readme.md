@@ -157,7 +157,7 @@ Node 结构如下
 --------
 - `RETURN_TYPES` 表示声明返回值类型列表，与TYPE对应。
 - `RETURN_NAMES` 表示声明返回值的展示名
-- `FUNCTION` 表示调用的函数名，该函数的参数名必须和`"required"`中声明的`name`相统一
+- `FUNCTION` 表示调用的函数名，该函数的形式参数名必须和`"required"`和`"hidden"`中声明的`name`相统一
 - `CATEGORY` 表示该节点所在的目录，显示在右键菜单里，可使用格式`.../.../...`表示多级目录
 - `INPUT_IS_LIST` 表示输入是一个列表，bool
 - `OUTPUT_IS_LIST` 表示输出是一个列表，bool
