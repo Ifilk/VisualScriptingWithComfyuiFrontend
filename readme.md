@@ -166,3 +166,47 @@ Node 结构如下
 ---
 - `NODE_CLASS_MAPPINGS` 节点声明字典。key为节点名字，value为类名
 - `NODE_DISPLAY_NAME_MAPPINGS` 节点展示名声明字典。key为节点名字，value为展示名
+
+## 3.3 自定义节点web扩展
+在`/web/js/`文件下创建`exampleNode.js`。通常一个web扩展结构如下
+```js
+import {app} from "/scripts/app.js";
+
+app.registerExtension({
+    name: "ifilk.example",
+    init() {
+        // do something ...
+    },
+    async beforeRegisterNodeDef(nodeType, nodeData, app) {
+        // do something ...
+    },
+    getCustomWidgets() {
+        return {
+            CUSTOM_WIDGET_NAME(node, inputName, inputData, app) {
+                // do something ...
+            }
+        }
+    }
+});
+```
+在加载每一个节点之都会执行所有已注册的extension的beforeRegisterNodeDef函数。可以通过传入参nodeType过滤出特定节点
+```js
+if (nodeData.name === "ExampleCustomNode") {
+    // do something ...
+}
+```
+上文提到我们可以通过`{'ui': {...}}`来向web扩展传参，在web扩展中，我们可以重写节点的`onExecuted`函数来接收参数
+```js
+const onExecuted = nodeType.prototype.onExecuted;
+nodeType.prototype.onExecuted = (ui) => {
+    onExecuted?.apply(this, arguments);
+    // do something ...
+}
+```
+像是ComfyUI图像上传功能，节点下方会有特定的小组件(Widget)，我们可以通过实现`getCustomWidgets`函数来自定义Widget，然后在`beforeRegisterNodeDef`函数中写入节点中
+```js
+nodeData.input.required.custom_widget = ["CUSTOM_WIDGET_NAME"];
+```
+## 3.4 额外内容
+
+- 可以通过`from comfy.utils import ProgressBar`拿到`ProgressBar`类。该类实现了节点上进度条的控制
