@@ -56,6 +56,53 @@ def interrupt_processing(value=True):
     pass
 
 
+class ToJSON:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":
+                    {"obj": (any,)},
+                }
+
+    RETURN_TYPES = ("STRING",)
+    OUTPUT_NODE = True
+    FUNCTION = "provide"
+    CATEGORY = "base"
+
+    def provide(self, obj):
+        return (json.dumps(obj), )
+
+
+class ToString:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":
+                    {"obj": (any,)},
+                }
+
+    RETURN_TYPES = ("STRING",)
+    OUTPUT_NODE = True
+    FUNCTION = "provide"
+    CATEGORY = "base"
+
+    def provide(self, obj):
+        return (str(obj), )
+
+
+class Env:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":
+                    {"name": ("STRING", {"dynamicPrompts": True})},
+                }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "provide"
+    CATEGORY = "base"
+
+    def provide(self, name):
+        return (os.getenv(name),)
+
+
 class PutVariable:
     @classmethod
     def INPUT_TYPES(s):
@@ -81,7 +128,7 @@ class GetVariable:
                     {"name": ("STRING", {"default": "var1"})},
                 }
 
-    RETURN_TYPES = (any, )
+    RETURN_TYPES = (any,)
     FUNCTION = "provide"
     CATEGORY = "base"
 
@@ -120,10 +167,13 @@ class String:
 
 
 NODE_CLASS_MAPPINGS = {
+    'EnvironmentVariable': Env,
     'PutVariable': PutVariable,
     'GetVariable': GetVariable,
     'Number': Number,
     'String': String,
+    'ToString': ToString,
+    'ToJSON': ToJSON
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -131,6 +181,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'GetVariable': 'Get Variable',
     'Number': 'Number',
     'String': 'String',
+    'EnvironmentVariable': 'Get Environment Variable',
+    'ToString': 'To String',
+    'ToJSON': 'To JSON'
 }
 
 EXTENSION_WEB_DIRS = {}
@@ -248,6 +301,7 @@ def init_builtin_extra_nodes():
     """
     extras_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy_extras")
     extras_files = [
+        'database.py'
         # "nodes_latent.py",
         # "nodes_hypernetwork.py",
         # "nodes_upscale_model.py",
