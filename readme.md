@@ -189,7 +189,7 @@ app.registerExtension({
     }
 });
 ```
-在加载每一个节点之都会执行所有已注册的extension的beforeRegisterNodeDef函数。可以通过传入参nodeType过滤出特定节点
+在加载每一个节点之都会执行所有已注册的extension的beforeRegisterNodeDef函数。可以通过入参nodeType过滤出特定节点
 ```js
 if (nodeData.name === "ExampleCustomNode") {
     // do something ...
