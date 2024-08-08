@@ -1,3 +1,5 @@
+# VisualScriptingWithComfyuiFrontend
+
 # 1.项目介绍
 `VisualScriptingWithComfyuiFrontend`是一个基于 [ComfyUI](https://github.com/comfyanonymous/ComfyUI) 的可视化脚本框架，
 该项目将ComfyUI的工作流交互执行与stable diffusion运行解耦合，并且保证文件目录结构不变下移除了后者相关代码。所以该项目也可以作为ComfyUI自定义节点编写的教程
